@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Cam Directory — Browse Free Live Rooms</title>
+<meta name="description" content="Browse live cam rooms in a clean, fast, minimal directory. Filter by tag, find who's online now, and jump straight into the room.">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Live Cam Room Directory",
+  "description": "A directory of live cam rooms, updated continuously."
+}
+</script>
+<style>
+  :root{
+    --bg: #0b0b0c;
+    --surface: #131315;
+    --card: #17171a;
+    --border: #26262a;
+    --border-soft: #1d1d20;
+    --text: #f2f2f0;
+    --text-muted: #9a9aa0;
+    --text-faint: #5a5a60;
+    --white: #ffffff;
+    --radius: 10px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin:0;
+    padding:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a{ color: inherit; text-decoration: none; }
+
+  ::selection{ background: var(--white); color: #000; }
+
+  /* ---------- Age gate ---------- */
+  #age-gate{
+    position: fixed;
+    inset: 0;
+    background: rgba(6,6,7,0.97);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  #age-gate.hidden{ display:none; }
+  .gate-box{
+    max-width: 420px;
+    text-align: center;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 40px 32px;
+  }
+  .gate-box h2{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  .gate-box p{
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 0 28px;
+  }
+  .gate-actions{ display:flex; gap: 12px; justify-content:center; }
+  .btn{
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 12px 22px;
+    border-radius: 999px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    transition: all .15s ease;
+  }
+  .btn:hover{ border-color: var(--text-muted); }
+  .btn-primary{
+    background: var(--white);
+    color: #0b0b0c;
+    border-color: var(--white);
+  }
+  .btn-primary:hover{ background: #d8d8d8; border-color:#d8d8d8; }
+
+  /* ---------- Header ---------- */
+  header{
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(11,11,12,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .header-inner{
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .logo{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .logo .dot{
+    width:7px; height:7px; border-radius:50%;
+    background: var(--white);
+    display:inline-block;
+  }
+  .search-wrap{
+    flex: 1;
+    max-width: 640px;
+    position: relative;
+  }
+  .search-wrap input{
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 11px 18px 11px 40px;
+    font-size: 14px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border-color .15s ease;
+  }
+  .search-wrap input:focus{ border-color: var(--text-muted); }
+  .search-wrap input::placeholder{ color: var(--text-faint); }
+  .search-icon{
+    position:absolute; left:15px; top:50%; transform:translateY(-50%);
+    width:15px; height:15px; opacity:.5;
+  }
+  .live-counter{
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .live-counter .pulse{
+    width:6px; height:6px; border-radius:50%;
+    background: var(--white);
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse{
+    0%{ opacity:1; transform:scale(1); }
+    50%{ opacity:.35; transform:scale(1.4); }
+    100%{ opacity:1; transform:scale(1); }
+  }
+
+  /* ---------- Filter bar ---------- */
+  .filter-bar{
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 14px 24px 4px;
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .filter-bar::-webkit-scrollbar{ display:none; }
+  .chip{
+    flex: 0 0 auto;
+    font-size: 12.5px;
+    font-family:'Inter',sans-serif;
+    font-weight:500;
+    padding: 7px 15px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    background: transparent;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .chip:hover{ color: var(--text); border-color: var(--text-muted); }
+  .chip.active{
+    background: var(--white);
+    color: #0b0b0c;
+    border-color: var(--white);
+  }
+
+  /* ---------- Intro / SEO copy ---------- */
+  .intro{
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 28px 24px 6px;
+  }
+  .intro h1{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(24px, 3vw, 34px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0 0 8px;
+  }
+  .intro p{
+    font-size: 14px;
+    color: var(--text-muted);
+    max-width: 680px;
+    line-height: 1.65;
+    margin: 0;
+  }
+
+  /* ---------- Grid ---------- */
+  main{
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
+  .grid{
+    column-count: 2;
+    column-gap: 14px;
+  }
+  @media (min-width: 640px){ .grid{ column-count: 3; } }
+  @media (min-width: 900px){ .grid{ column-count: 4; } }
+  @media (min-width: 1200px){ .grid{ column-count: 5; } }
+  @media (min-width: 1500px){ .grid{ column-count: 6; } }
+
+  .card{
+    break-inside: avoid;
+    margin-bottom: 14px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    display: block;
+    cursor: pointer;
+    transition: transform .18s ease, border-color .18s ease;
+  }
+  .card:hover{
+    transform: translateY(-3px);
+    border-color: var(--text-faint);
+  }
+  .card img{
+    display:block;
+    width: 100%;
+    height: auto;
+    filter: grayscale(0.15);
+    transition: filter .2s ease;
+  }
+  .card:hover img{ filter: grayscale(0); }
+
+  .badge-live{
+    position:absolute;
+    top:10px; left:10px;
+    display:flex; align-items:center; gap:5px;
+    background: rgba(11,11,12,0.75);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 999px;
+    padding: 4px 9px 4px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .badge-live .pulse{
+    width:5px; height:5px; border-radius:50%;
+    background: var(--white);
+    animation: pulse 1.8s infinite;
+  }
+
+  .badge-viewers{
+    position:absolute;
+    top:10px; right:10px;
+    background: rgba(11,11,12,0.75);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-overlay{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    padding: 22px 12px 12px;
+    background: linear-gradient(to top, rgba(4,4,5,0.92), rgba(4,4,5,0));
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  .card:hover .card-overlay{ opacity: 1; transform: translateY(0); }
+
+  .card-name{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .card-tags{
+    font-size: 10.5px;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .empty-state{
+    text-align:center;
+    padding: 80px 20px;
+    color: var(--text-faint);
+  }
+  .empty-state h3{
+    font-family:'Space Grotesk', sans-serif;
+    color: var(--text-muted);
+    font-size:16px;
+    margin: 0 0 6px;
+  }
+  .empty-state p{ font-size:13px; margin:0; }
+
+  /* ---------- Footer ---------- */
+  footer{
+    border-top: 1px solid var(--border-soft);
+    padding: 32px 24px 40px;
+  }
+  .footer-inner{
+    max-width: 1440px;
+    margin: 0 auto;
+    display:flex;
+    flex-wrap:wrap;
+    gap: 16px;
+    justify-content: space-between;
+    align-items:center;
+  }
+  .footer-links{
+    display:flex;
+    gap: 20px;
+    flex-wrap:wrap;
+  }
+  .footer-links a{
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .footer-links a:hover{ color: var(--text-muted); }
+  .footer-note{
+    font-size: 11.5px;
+    color: var(--text-faint);
+    max-width: 640px;
+    line-height: 1.6;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="age-gate">
+  <div class="gate-box">
+    <h2>You must be 18+ to enter</h2>
+    <p>This site contains adult content and links to third-party live cam platforms. By continuing, you confirm you are at least 18 years old (or the age of majority in your jurisdiction).</p>
+    <div class="gate-actions">
+      <a class="btn" href="https://www.google.com">Leave</a>
+      <button class="btn btn-primary" id="gate-enter">I'm 18 or older — Enter</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo"><span class="dot"></span>ROOMLIST</div>
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="search" type="text" placeholder="Search by name or tag…" autocomplete="off">
+    </div>
+    <div class="live-counter"><span class="pulse"></span><span id="live-count">0</span> live now</div>
+  </div>
+  <div class="filter-bar" id="filter-bar">
+    <button class="chip active" data-tag="all">All</button>
+  </div>
+</header>
+
+<div class="intro">
+  <h1>Live Cam Rooms, Browsed Like a Feed</h1>
+  <p>A running directory of who's live right now. Filter by tag, search by name, click through to watch — no clutter, no dead links, just rooms that are actually online.</p>
+</div>
+
+<main>
+  <div class="grid" id="grid"></div>
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <h3>No rooms match that</h3>
+    <p>Try a different tag or clear your search.</p>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-links">
+      <a href="#">18 U.S.C. 2257</a>
+      <a href="#">Terms</a>
+      <a href="#">Privacy</a>
+      <a href="#">DMCA</a>
+      <a href="#">Contact</a>
+    </div>
+    <div class="footer-note">
+      All models were 18 years of age or older at the time of depiction. This site is a directory linking to third-party live streaming platforms and does not host any streaming content itself.
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ---- Affiliate link config ----
+  const AFF_CAMPAIGN = 'T2CSW';
+  const AFF_TOUR = 'APi5';
+  function roomLink(username){
+    return `https://chaturbate.com/in/?tour=${AFF_TOUR}&campaign=${AFF_CAMPAIGN}&track=default&room=${encodeURIComponent(username)}`;
+  }
+
+  // ---- Age gate ----
+  const gate = document.getElementById('age-gate');
+  if (localStorage.getItem('age_verified') === 'true') {
+    gate.classList.add('hidden');
+  }
+  document.getElementById('gate-enter').addEventListener('click', () => {
+    localStorage.setItem('age_verified', 'true');
+    gate.classList.add('hidden');
+  });
+
+  // ---- State ----
+  let allRooms = [];
+  let activeTag = 'all';
+  let searchTerm = '';
+
+  // Deterministic pseudo-random height so masonry looks natural without layout shift
+  function hashHeight(seed){
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 997;
+    return 520 + (h % 4) * 55; // 520–685px range
+  }
+
+  function renderFilters(rooms){
+    const tagSet = new Set();
+    rooms.forEach(r => r.tags.forEach(t => tagSet.add(t)));
+    const bar = document.getElementById('filter-bar');
+    bar.innerHTML = '<button class="chip active" data-tag="all">All</button>';
+    [...tagSet].sort().forEach(tag => {
+      const btn = document.createElement('button');
+      btn.className = 'chip';
+      btn.dataset.tag = tag;
+      btn.textContent = tag;
+      bar.appendChild(btn);
+    });
+    bar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip');
+      if (!btn) return;
+      activeTag = btn.dataset.tag;
+      [...bar.children].forEach(c => c.classList.toggle('active', c === btn));
+      render();
+    });
+  }
+
+  function render(){
+    const grid = document.getElementById('grid');
+    const empty = document.getElementById('empty-state');
+    const term = searchTerm.trim().toLowerCase();
+
+    const filtered = allRooms.filter(r => {
+      const tagMatch = activeTag === 'all' || r.tags.includes(activeTag);
+      const searchMatch = !term || r.username.toLowerCase().includes(term) || r.tags.some(t => t.includes(term));
+      return tagMatch && searchMatch;
+    });
+
+    document.getElementById('live-count').textContent = filtered.length;
+
+    grid.innerHTML = '';
+    if (filtered.length === 0){
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    filtered.forEach(room => {
+      const a = document.createElement('a');
+      a.className = 'card';
+      a.href = roomLink(room.username);
+      a.target = '_blank';
+      a.rel = 'noopener sponsored nofollow';
+      a.setAttribute('aria-label', `Watch ${room.username} live`);
+
+      const h = hashHeight(room.username);
+      a.innerHTML = `
+        <img src="${room.thumb}" alt="${room.username} live cam room" loading="lazy" style="height:${h}px;object-fit:cover;">
+        <div class="badge-live"><span class="pulse"></span>LIVE</div>
+        <div class="badge-viewers">${room.viewers.toLocaleString()}</div>
+        <div class="card-overlay">
+          <p class="card-name">${room.username}</p>
+          <p class="card-tags">${room.tags.join(' · ')}</p>
+        </div>
+      `;
+      grid.appendChild(a);
+    });
+  }
+
+  document.getElementById('search').addEventListener('input', (e) => {
+    searchTerm = e.target.value;
+    render();
+  });
+
+  // ---- Load data ----
+  fetch('rooms.json')
+    .then(res => res.json())
+    .then(data => {
+      allRooms = data.sort((a,b) => b.viewers - a.viewers);
+      renderFilters(allRooms);
+      render();
+    })
+    .catch(err => {
+      document.getElementById('grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><h3>Couldn\'t load rooms</h3><p>Check that rooms.json is in the same folder as this page.</p></div>';
+      console.error(err);
+    });
+</script>
+
+</body>
+</html>
